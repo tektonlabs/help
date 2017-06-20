@@ -41,12 +41,6 @@ type Props = {
     _.defer(() => browserHistory.push('/search'));
   }
 
-  @keydown(['d'])
-  dashboard() {
-    // if (!this.props.user) return;
-    _.defer(() => browserHistory.push('/'));
-  }
-
   render() {
     const user = this.props.user;
 
