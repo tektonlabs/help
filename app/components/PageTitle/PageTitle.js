@@ -9,7 +9,7 @@ type Props = {
 
 const PageTitle = ({ title, favicon }: Props) => (
   <Helmet>
-    <title>{`${title} - Outline`}</title>
+    <title>{`${title} - Help`}</title>
     <link
       rel="shortcut icon"
       type="image/png"
