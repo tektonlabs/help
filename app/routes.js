@@ -14,6 +14,7 @@ import Details from 'scenes/Settings/Details';
 import Security from 'scenes/Settings/Security';
 import People from 'scenes/Settings/People';
 import Slack from 'scenes/Settings/Slack';
+import Zapier from 'scenes/Settings/Zapier';
 import Shares from 'scenes/Settings/Shares';
 import Tokens from 'scenes/Settings/Tokens';
 import Export from 'scenes/Settings/Export';
@@ -53,19 +54,28 @@ export default function Routes() {
               path="/settings/integrations/slack"
               component={Slack}
             />
+            <Route
+              exact
+              path="/settings/integrations/zapier"
+              component={Zapier}
+            />
             <Route exact path="/settings/export" component={Export} />
             <Route exact path="/collections/:id" component={Collection} />
             <Route exact path={`/d/${slug}`} component={RedirectDocument} />
-            <Route exact path={`/doc/${slug}`} component={Document} />
-            <Route exact path={`/doc/${slug}/move`} component={Document} />
-            <Route exact path="/search" component={Search} />
-            <Route exact path="/search/:query" component={Search} />
-            <Route path="/404" component={Error404} />
+            <Route
+              exact
+              path={`/doc/${slug}/history/:revisionId?`}
+              component={Document}
+            />
             <RouteSidebarHidden
               exact
               path={`/doc/${slug}/edit`}
               component={Document}
             />
+            <Route path={`/doc/${slug}`} component={Document} />
+            <Route exact path="/search" component={Search} />
+            <Route exact path="/search/:query" component={Search} />
+            <Route path="/404" component={Error404} />
             <RouteSidebarHidden
               exact
               path="/collections/:id/new"
