@@ -11,6 +11,7 @@ import Document from 'scenes/Document';
 import Search from 'scenes/Search';
 import Settings from 'scenes/Settings';
 import Details from 'scenes/Settings/Details';
+import Notifications from 'scenes/Settings/Notifications';
 import Security from 'scenes/Settings/Security';
 import People from 'scenes/Settings/People';
 import Slack from 'scenes/Settings/Slack';
@@ -21,7 +22,7 @@ import Export from 'scenes/Settings/Export';
 import Error404 from 'scenes/Error404';
 
 import Layout from 'components/Layout';
-import Auth from 'components/Auth';
+import Authenticated from 'components/Authenticated';
 import RouteSidebarHidden from 'components/RouteSidebarHidden';
 import { matchDocumentSlug as slug } from 'utils/routeHelpers';
 
@@ -30,13 +31,16 @@ const DocumentNew = () => <Document newDocument />;
 const RedirectDocument = ({ match }: { match: Object }) => (
   <Redirect to={`/doc/${match.params.documentSlug}`} />
 );
+const RemountDocument = props => (
+  <Document key={props.location.pathname} {...props} />
+);
 
 export default function Routes() {
   return (
     <Switch>
       <Route exact path="/" component={Home} />
-      <Route exact path="/share/:shareId" component={Document} />
-      <Auth>
+      <Route exact path="/share/:shareId" component={RemountDocument} />
+      <Authenticated>
         <Layout>
           <Switch>
             <Route path="/dashboard/:tab" component={Dashboard} />
@@ -53,6 +57,11 @@ export default function Routes() {
             <Route exact path="/settings/tokens" component={Tokens} />
             <Route
               exact
+              path="/settings/notifications"
+              component={Notifications}
+            />
+            <Route
+              exact
               path="/settings/integrations/slack"
               component={Slack}
             />
@@ -62,31 +71,32 @@ export default function Routes() {
               component={Zapier}
             />
             <Route exact path="/settings/export" component={Export} />
-            <Route exact path="/collections/:id" component={Collection} />
-            <Route exact path={`/d/${slug}`} component={RedirectDocument} />
-            <Route
-              exact
-              path={`/doc/${slug}/history/:revisionId?`}
-              component={Document}
-            />
-            <RouteSidebarHidden
-              exact
-              path={`/doc/${slug}/edit`}
-              component={Document}
-            />
-            <Route path={`/doc/${slug}`} component={Document} />
-            <Route exact path="/search" component={Search} />
-            <Route exact path="/search/:query" component={Search} />
-            <Route path="/404" component={Error404} />
             <RouteSidebarHidden
               exact
               path="/collections/:id/new"
               component={DocumentNew}
             />
+            <Route exact path="/collections/:id/:tab" component={Collection} />
+            <Route exact path="/collections/:id" component={Collection} />
+            <Route exact path={`/d/${slug}`} component={RedirectDocument} />
+            <Route
+              exact
+              path={`/doc/${slug}/history/:revisionId?`}
+              component={RemountDocument}
+            />
+            <RouteSidebarHidden
+              exact
+              path={`/doc/${slug}/edit`}
+              component={RemountDocument}
+            />
+            <Route path={`/doc/${slug}`} component={RemountDocument} />
+            <Route exact path="/search" component={Search} />
+            <Route exact path="/search/:query" component={Search} />
+            <Route path="/404" component={Error404} />
             <Route component={NotFound} />
           </Switch>
         </Layout>
-      </Auth>
+      </Authenticated>
     </Switch>
   );
 }

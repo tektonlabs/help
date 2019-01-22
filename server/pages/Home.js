@@ -47,7 +47,7 @@ function Home(props: Props) {
                   <Feature>
                     <h2>Improve Communication</h2>
                     <p>
-                      Easily structure your teams information in one central,
+                      Easily structure your team’s information in one central,
                       structured location. No more hunting through folders or
                       scanning pages of search results and chat conversations.
                     </p>
@@ -55,7 +55,7 @@ function Home(props: Props) {
                   <Feature>
                     <h2>Safe &amp; Secure</h2>
                     <p>
-                      Outline provides a secure place for your teams
+                      Outline provides a secure place for your team’s
                       documentation on our hosted platform, stored in portable
                       Markdown format. Or, you can run your own copy – it’s open
                       source!
@@ -166,7 +166,7 @@ const Mask = styled.div`
 `;
 
 const Features = styled.div`
-  background: hsl(180, 58%, 85%);
+  background: #00adff;
   padding: 0 2em;
   width: 100%;
 `;
@@ -200,7 +200,7 @@ const Feature = styled(Grid.Unit)`
 `;
 
 const Footer = styled.div`
-  background: hsl(127, 58%, 85%);
+  background: #aa34f0;
   text-align: left;
   width: 100%;
   padding: 4em 2em;
@@ -208,6 +208,10 @@ const Footer = styled.div`
   h2 {
     font-size: 1.8em;
     margin-top: 0;
+  }
+
+  p {
+    margin-bottom: 0;
   }
 
   ${breakpoint('tablet')`

@@ -1,5 +1,7 @@
 // @flow
-import { observable, action } from 'mobx';
+import { v4 } from 'uuid';
+import { orderBy } from 'lodash';
+import { observable, action, computed } from 'mobx';
 import Document from 'models/Document';
 import Collection from 'models/Collection';
 import type { Toast } from '../types';
@@ -12,9 +14,8 @@ class UiStore {
   @observable progressBarVisible: boolean = false;
   @observable editMode: boolean = false;
   @observable mobileSidebarVisible: boolean = false;
-  @observable toasts: Toast[] = observable.array([]);
+  @observable toasts: Map<string, Toast> = new Map();
 
-  /* Actions */
   @action
   setActiveModal = (name: string, props: ?Object): void => {
     this.activeModalName = name;
@@ -85,15 +86,24 @@ class UiStore {
   @action
   showToast = (
     message: string,
-    type?: 'warning' | 'error' | 'info' | 'success' = 'warning'
-  ): void => {
-    this.toasts.push({ message, type });
+    type?: 'warning' | 'error' | 'info' | 'success' = 'success'
+  ) => {
+    const id = v4();
+    const createdAt = new Date().toISOString();
+    this.toasts.set(id, { message, type, createdAt, id });
+    return id;
   };
 
   @action
-  removeToast = (index: number): void => {
-    this.toasts.splice(index, 1);
+  removeToast = (id: string) => {
+    this.toasts.delete(id);
   };
+
+  @computed
+  get orderedToasts(): Toast[] {
+    // $FlowIssue
+    return orderBy(Array.from(this.toasts.values()), 'createdAt', 'desc');
+  }
 }
 
 export default UiStore;

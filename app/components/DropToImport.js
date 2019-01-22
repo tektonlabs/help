@@ -2,27 +2,27 @@
 import * as React from 'react';
 import { observable } from 'mobx';
 import { observer, inject } from 'mobx-react';
+import { Redirect } from 'react-router-dom';
 import { createGlobalStyle } from 'styled-components';
-import importFile from 'utils/importFile';
 import invariant from 'invariant';
-import _ from 'lodash';
+import importFile from 'utils/importFile';
 import Dropzone from 'react-dropzone';
 import DocumentsStore from 'stores/DocumentsStore';
 import LoadingIndicator from 'components/LoadingIndicator';
 
 type Props = {
-  children?: React.Node,
+  children: React.Node,
   collectionId: string,
   documentId?: string,
   activeClassName?: string,
   rejectClassName?: string,
   documents: DocumentsStore,
   disabled: boolean,
-  history: Object,
 };
 
-const GlobalStyles = createGlobalStyle`
+export const GlobalStyles = createGlobalStyle`
   .activeDropZone {
+    border-radius: 4px;
     background: ${props => props.theme.slateDark};
     svg { fill: ${props => props.theme.white}; }
   }
@@ -35,6 +35,7 @@ const GlobalStyles = createGlobalStyle`
 @observer
 class DropToImport extends React.Component<Props> {
   @observable isImporting: boolean = false;
+  @observable redirectTo: ?string;
 
   onDropAccepted = async (files = []) => {
     this.isImporting = true;
@@ -59,27 +60,24 @@ class DropToImport extends React.Component<Props> {
         });
 
         if (redirect) {
-          this.props.history.push(doc.url);
+          this.redirectTo = doc.url;
         }
       }
-    } catch (err) {
-      // TODO: show error alert.
     } finally {
       this.isImporting = false;
     }
   };
 
   render() {
-    const props = _.omit(
-      this.props,
-      'history',
-      'documentId',
-      'collectionId',
-      'documents',
-      'disabled',
-      'menuOpen'
-    );
+    const {
+      documentId,
+      collectionId,
+      documents,
+      disabled,
+      ...rest
+    } = this.props;
 
+    if (this.redirectTo) return <Redirect to={this.redirectTo} />;
     if (this.props.disabled) return this.props.children;
 
     return (
@@ -90,9 +88,8 @@ class DropToImport extends React.Component<Props> {
         disableClick
         disablePreview
         multiple
-        {...props}
+        {...rest}
       >
-        <GlobalStyles />
         {this.isImporting && <LoadingIndicator />}
         {this.props.children}
       </Dropzone>

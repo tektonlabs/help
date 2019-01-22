@@ -4,7 +4,7 @@ import { observer, inject } from 'mobx-react';
 import breakpoint from 'styled-components-breakpoint';
 import styled from 'styled-components';
 import { Link } from 'react-router-dom';
-import { CollectionIcon, GoToIcon } from 'outline-icons';
+import { CollectionIcon, PrivateCollectionIcon, GoToIcon } from 'outline-icons';
 
 import Document from 'models/Document';
 import CollectionsStore from 'stores/CollectionsStore';
@@ -21,17 +21,24 @@ const Breadcrumb = observer(({ document, collections }: Props) => {
   if (!document.collection) return null;
 
   const collection =
-    collections.getById(document.collection.id) || document.collection;
+    collections.data.get(document.collection.id) || document.collection;
 
   return (
     <Wrapper justify="flex-start" align="center">
       <CollectionName to={collectionUrl(collection.id)}>
-        <CollectionIcon color={collection.color} expanded />{' '}
+        {collection.private ? (
+          <PrivateCollectionIcon color={collection.color} expanded />
+        ) : (
+          <CollectionIcon color={collection.color} expanded />
+        )}{' '}
         <span>{collection.name}</span>
       </CollectionName>
       {path.map(n => (
         <React.Fragment key={n.id}>
-          <Slash /> <Crumb to={n.url}>{n.title}</Crumb>
+          <Slash />{' '}
+          <Crumb to={n.url} title={n.title}>
+            {n.title}
+          </Crumb>
         </React.Fragment>
       ))}
     </Wrapper>

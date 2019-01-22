@@ -2,9 +2,12 @@
 import ApiKey from './ApiKey';
 import Authentication from './Authentication';
 import Collection from './Collection';
+import CollectionUser from './CollectionUser';
 import Document from './Document';
 import Event from './Event';
 import Integration from './Integration';
+import Notification from './Notification';
+import NotificationSetting from './NotificationSetting';
 import Revision from './Revision';
 import Share from './Share';
 import Star from './Star';
@@ -16,9 +19,12 @@ const models = {
   ApiKey,
   Authentication,
   Collection,
+  CollectionUser,
   Document,
   Event,
   Integration,
+  Notification,
+  NotificationSetting,
   Revision,
   Share,
   Star,
@@ -38,9 +44,12 @@ export {
   ApiKey,
   Authentication,
   Collection,
+  CollectionUser,
   Document,
   Event,
   Integration,
+  Notification,
+  NotificationSetting,
   Revision,
   Share,
   Star,

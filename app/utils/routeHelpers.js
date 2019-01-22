@@ -14,8 +14,10 @@ export function newCollectionUrl(): string {
   return '/collections/new';
 }
 
-export function collectionUrl(collectionId: string): string {
-  return `/collections/${collectionId}`;
+export function collectionUrl(collectionId: string, section: ?string): string {
+  const path = `/collections/${collectionId}`;
+  if (section) return `${path}/${section}`;
+  return path;
 }
 
 export function documentUrl(doc: Document): string {
@@ -23,7 +25,7 @@ export function documentUrl(doc: Document): string {
 }
 
 export function documentNewUrl(doc: Document): string {
-  const newUrl = `${doc.collection.url}/new`;
+  const newUrl = `${doc.collection.url || ''}/new`;
   if (doc.parentDocumentId) {
     return `${newUrl}?parentDocument=${doc.parentDocumentId}`;
   }
@@ -59,7 +61,7 @@ export function updateDocumentUrl(oldUrl: string, newUrl: string): string {
 }
 
 export function newDocumentUrl(collection: Collection): string {
-  return `${collection.url}/new`;
+  return `${collection.url || ''}/new`;
 }
 
 export function searchUrl(query?: string): string {

@@ -26,27 +26,27 @@ class Export extends React.Component<Props> {
     ev.preventDefault();
     this.isLoading = true;
 
-    const success = await this.props.collections.export();
-
-    if (success) {
+    try {
+      await this.props.collections.export();
       this.isExporting = true;
       this.props.ui.showToast('Export in progress…', 'success');
+    } finally {
+      this.isLoading = false;
     }
-    this.isLoading = false;
   };
 
   render() {
     const { auth } = this.props;
-    if (!auth.user) return;
+    if (!auth.user) return null;
 
     return (
       <CenteredContent>
         <PageTitle title="Export Data" />
         <h1>Export Data</h1>
         <HelpText>
-          Exporting your teams documents may take a little time depending on the
-          size of your knowledgebase. Consider exporting a single document or
-          collection instead.
+          Exporting your team’s documents may take a little time depending on
+          the size of your knowledgebase. Consider exporting a single document
+          or collection instead.
         </HelpText>
         <HelpText>
           Still want to export everything in your wiki? We’ll put together a zip

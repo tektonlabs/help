@@ -8,11 +8,13 @@ import Flex from 'shared/components/Flex';
 import HelpText from 'components/HelpText';
 import Document from 'models/Document';
 import DocumentsStore from 'stores/DocumentsStore';
+import UiStore from 'stores/UiStore';
 
 type Props = {
   history: Object,
   document: Document,
   documents: DocumentsStore,
+  ui: UiStore,
   onSubmit: () => void,
 };
 
@@ -24,14 +26,16 @@ class DocumentDelete extends React.Component<Props> {
     ev.preventDefault();
     this.isDeleting = true;
     const { collection } = this.props.document;
-    const success = await this.props.document.delete();
 
-    if (success) {
+    try {
+      await this.props.document.delete();
       this.props.history.push(collection.url);
       this.props.onSubmit();
+    } catch (err) {
+      this.props.ui.showToast(err.message);
+    } finally {
+      this.isDeleting = false;
     }
-
-    this.isDeleting = false;
   };
 
   render() {
@@ -41,11 +45,12 @@ class DocumentDelete extends React.Component<Props> {
       <Flex column>
         <form onSubmit={this.handleSubmit}>
           <HelpText>
-            Are you sure? Deleting the <strong>{document.title}</strong>{' '}
-            document is permanent and will also delete all of its history.
+            Are you sure about that? Deleting the{' '}
+            <strong>{document.title}</strong> document is permanent, will delete
+            all of its history, and any child documents.
           </HelpText>
           <Button type="submit" danger>
-            {this.isDeleting ? 'Deleting…' : 'Delete'}
+            {this.isDeleting ? 'Deleting…' : 'I’m sure – Delete'}
           </Button>
         </form>
       </Flex>
@@ -53,4 +58,4 @@ class DocumentDelete extends React.Component<Props> {
   }
 }
 
-export default inject('documents')(withRouter(DocumentDelete));
+export default inject('documents', 'ui')(withRouter(DocumentDelete));

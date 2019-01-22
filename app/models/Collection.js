@@ -1,26 +1,27 @@
 // @flow
-import { extendObservable, action, computed, runInAction } from 'mobx';
 import invariant from 'invariant';
-
+import { map, without, pick, filter } from 'lodash';
+import { action, computed, observable } from 'mobx';
 import BaseModel from 'models/BaseModel';
 import Document from 'models/Document';
+import User from 'models/User';
 import { client } from 'utils/ApiClient';
-import stores from 'stores';
-import UiStore from 'stores/UiStore';
 import type { NavigationNode } from 'types';
 
-class Collection extends BaseModel {
-  isSaving: boolean = false;
-  ui: UiStore;
+export default class Collection extends BaseModel {
+  @observable isSaving: boolean;
+  @observable isLoadingUsers: boolean;
+  @observable userIds: string[] = [];
 
-  createdAt: string;
-  description: string;
   id: string;
   name: string;
+  description: string;
   color: string;
+  private: boolean;
   type: 'atlas' | 'journal';
   documents: NavigationNode[];
-  updatedAt: string;
+  createdAt: ?string;
+  updatedAt: ?string;
   url: string;
 
   @computed
@@ -41,6 +42,45 @@ class Collection extends BaseModel {
     return results;
   }
 
+  @computed
+  get users(): User[] {
+    return filter(this.store.rootStore.users.active, user =>
+      this.userIds.includes(user.id)
+    );
+  }
+
+  @action
+  async fetchUsers() {
+    this.isLoadingUsers = true;
+
+    try {
+      const res = await client.post('/collections.users', { id: this.id });
+      invariant(res && res.data, 'User data should be available');
+      this.userIds = map(res.data, user => user.id);
+      res.data.forEach(this.store.rootStore.users.add);
+    } finally {
+      this.isLoadingUsers = false;
+    }
+  }
+
+  @action
+  async addUser(user: User) {
+    await client.post('/collections.add_user', {
+      id: this.id,
+      userId: user.id,
+    });
+    this.userIds = this.userIds.concat(user.id);
+  }
+
+  @action
+  async removeUser(user: User) {
+    await client.post('/collections.remove_user', {
+      id: this.id,
+      userId: user.id,
+    });
+    this.userIds = without(this.userIds, user.id);
+  }
+
   @action
   updateDocument(document: Document) {
     const travelDocuments = (documentList, path) =>
@@ -56,103 +96,11 @@ class Collection extends BaseModel {
     travelDocuments(this.documents);
   }
 
-  @action
-  fetch = async () => {
-    try {
-      const res = await client.post('/collections.info', { id: this.id });
-      invariant(res && res.data, 'API response should be available');
-      const { data } = res;
-      runInAction('Collection#fetch', () => {
-        this.updateData(data);
-      });
-    } catch (e) {
-      this.ui.showToast('Collection failed loading');
-    }
-
-    return this;
+  toJS = () => {
+    return pick(this, ['id', 'name', 'color', 'description', 'private']);
   };
 
-  @action
-  save = async () => {
-    if (this.isSaving) return this;
-    this.isSaving = true;
-
-    const params = {
-      name: this.name,
-      color: this.color,
-      description: this.description,
-    };
-
-    try {
-      let res;
-      if (this.id) {
-        res = await client.post('/collections.update', {
-          id: this.id,
-          ...params,
-        });
-      } else {
-        res = await client.post('/collections.create', params);
-      }
-      runInAction('Collection#save', () => {
-        invariant(res && res.data, 'Data should be available');
-        this.updateData(res.data);
-      });
-    } catch (e) {
-      this.ui.showToast('Collection failed saving');
-      return false;
-    } finally {
-      this.isSaving = false;
-    }
-
-    return true;
+  export = () => {
+    return client.post('/collections.export', { id: this.id });
   };
-
-  @action
-  delete = async () => {
-    try {
-      await client.post('/collections.delete', { id: this.id });
-      this.emit('collections.delete', { id: this.id });
-      return true;
-    } catch (e) {
-      this.ui.showToast('Collection failed to delete');
-    }
-    return false;
-  };
-
-  @action
-  export = async () => {
-    await client.post('/collections.export', { id: this.id });
-  };
-
-  @action
-  updateData(data: Object = {}) {
-    extendObservable(this, data);
-  }
-
-  constructor(collection: $Shape<Collection>) {
-    super();
-
-    this.updateData(collection);
-    this.ui = stores.ui;
-
-    this.on('documents.delete', (data: { collectionId: string }) => {
-      if (data.collectionId === this.id) this.fetch();
-    });
-    this.on(
-      'documents.update',
-      (data: { collectionId: string, document: Document }) => {
-        if (data.collectionId === this.id) {
-          this.updateDocument(data.document);
-        }
-      }
-    );
-    this.on('documents.publish', (data: { collectionId: string }) => {
-      if (data.collectionId === this.id) this.fetch();
-    });
-    this.on('documents.move', (data: { collectionId: string }) => {
-      if (data.collectionId === this.id) this.fetch();
-    });
-  }
 }
-
-export default Collection;

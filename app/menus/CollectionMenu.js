@@ -1,8 +1,12 @@
 // @flow
 import * as React from 'react';
+import { observable } from 'mobx';
 import { inject, observer } from 'mobx-react';
+import { Redirect } from 'react-router-dom';
 import styled from 'styled-components';
 import { MoreIcon } from 'outline-icons';
+import Modal from 'components/Modal';
+import CollectionPermissions from 'scenes/CollectionPermissions';
 
 import getDataTransferFiles from 'utils/getDataTransferFiles';
 import importFile from 'utils/importFile';
@@ -15,7 +19,6 @@ type Props = {
   label?: React.Node,
   onOpen?: () => *,
   onClose?: () => *,
-  history: Object,
   ui: UiStore,
   documents: DocumentsStore,
   collection: Collection,
@@ -24,11 +27,17 @@ type Props = {
 @observer
 class CollectionMenu extends React.Component<Props> {
   file: ?HTMLInputElement;
+  @observable permissionsModalOpen: boolean = false;
+  @observable redirectTo: ?string;
+
+  componentDidUpdate() {
+    this.redirectTo = undefined;
+  }
 
   onNewDocument = (ev: SyntheticEvent<*>) => {
     ev.preventDefault();
-    const { collection, history } = this.props;
-    history.push(`${collection.url}/new`);
+    const { collection } = this.props;
+    this.redirectTo = `${collection.url}/new`;
   };
 
   onImportDocument = (ev: SyntheticEvent<*>) => {
@@ -40,13 +49,17 @@ class CollectionMenu extends React.Component<Props> {
 
   onFilePicked = async (ev: SyntheticEvent<*>) => {
     const files = getDataTransferFiles(ev);
-    const document = await importFile({
-      file: files[0],
-      documents: this.props.documents,
-      collectionId: this.props.collection.id,
-    });
 
-    this.props.history.push(document.url);
+    try {
+      const document = await importFile({
+        file: files[0],
+        documents: this.props.documents,
+        collectionId: this.props.collection.id,
+      });
+      this.redirectTo = document.url;
+    } catch (err) {
+      this.props.ui.showToast(err.message);
+    }
   };
 
   onEdit = (ev: SyntheticEvent<*>) => {
@@ -67,17 +80,38 @@ class CollectionMenu extends React.Component<Props> {
     this.props.ui.setActiveModal('collection-export', { collection });
   };
 
+  onPermissions = (ev: SyntheticEvent<*>) => {
+    ev.preventDefault();
+    this.permissionsModalOpen = true;
+  };
+
+  handlePermissionsModalClose = () => {
+    this.permissionsModalOpen = false;
+  };
+
   render() {
+    if (this.redirectTo) return <Redirect to={this.redirectTo} />;
+
     const { collection, label, onOpen, onClose } = this.props;
 
     return (
-      <span>
+      <React.Fragment>
         <HiddenInput
           type="file"
           ref={ref => (this.file = ref)}
           onChange={this.onFilePicked}
           accept="text/markdown, text/plain"
         />
+        <Modal
+          title="Collection permissions"
+          onRequestClose={this.handlePermissionsModalClose}
+          isOpen={this.permissionsModalOpen}
+        >
+          <CollectionPermissions
+            collection={collection}
+            onSubmit={this.handlePermissionsModalClose}
+          />
+        </Modal>
         <DropdownMenu
           label={label || <MoreIcon />}
           onOpen={onOpen}
@@ -93,6 +127,9 @@ class CollectionMenu extends React.Component<Props> {
               </DropdownMenuItem>
               <hr />
               <DropdownMenuItem onClick={this.onEdit}>Edit…</DropdownMenuItem>
+              <DropdownMenuItem onClick={this.onPermissions}>
+                Permissions…
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={this.onExport}>
                 Export…
               </DropdownMenuItem>
@@ -100,7 +137,7 @@ class CollectionMenu extends React.Component<Props> {
           )}
           <DropdownMenuItem onClick={this.onDelete}>Delete…</DropdownMenuItem>
         </DropdownMenu>
-      </span>
+      </React.Fragment>
     );
   }
 }
