@@ -2,13 +2,15 @@
 import * as React from 'react';
 import { observable } from 'mobx';
 import { observer, inject } from 'mobx-react';
-import { Redirect } from 'react-router-dom';
+import { withRouter } from 'react-router-dom';
 import { createGlobalStyle } from 'styled-components';
 import invariant from 'invariant';
 import importFile from 'utils/importFile';
 import Dropzone from 'react-dropzone';
 import DocumentsStore from 'stores/DocumentsStore';
 import LoadingIndicator from 'components/LoadingIndicator';
+
+const EMPTY_OBJECT = {};
 
 type Props = {
   children: React.Node,
@@ -18,6 +20,9 @@ type Props = {
   rejectClassName?: string,
   documents: DocumentsStore,
   disabled: boolean,
+  location: Object,
+  match: Object,
+  history: Object,
 };
 
 export const GlobalStyles = createGlobalStyle`
@@ -35,7 +40,6 @@ export const GlobalStyles = createGlobalStyle`
 @observer
 class DropToImport extends React.Component<Props> {
   @observable isImporting: boolean = false;
-  @observable redirectTo: ?string;
 
   onDropAccepted = async (files = []) => {
     this.isImporting = true;
@@ -60,7 +64,7 @@ class DropToImport extends React.Component<Props> {
         });
 
         if (redirect) {
-          this.redirectTo = doc.url;
+          this.props.history.push(doc.url);
         }
       }
     } finally {
@@ -74,17 +78,19 @@ class DropToImport extends React.Component<Props> {
       collectionId,
       documents,
       disabled,
+      location,
+      match,
+      history,
       ...rest
     } = this.props;
 
-    if (this.redirectTo) return <Redirect to={this.redirectTo} />;
     if (this.props.disabled) return this.props.children;
 
     return (
       <Dropzone
         accept="text/markdown, text/plain"
         onDropAccepted={this.onDropAccepted}
-        style={{}}
+        style={EMPTY_OBJECT}
         disableClick
         disablePreview
         multiple
@@ -97,4 +103,4 @@ class DropToImport extends React.Component<Props> {
   }
 }
 
-export default inject('documents')(DropToImport);
+export default inject('documents')(withRouter(DropToImport));
