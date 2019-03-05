@@ -89,7 +89,6 @@ class DocumentScene extends React.Component<Props> {
 
   componentWillUnmount() {
     clearTimeout(this.viewTimeout);
-    this.props.ui.clearActiveDocument();
   }
 
   goToDocumentCanonical = () => {
@@ -156,7 +155,9 @@ class DocumentScene extends React.Component<Props> {
             this.viewTimeout = setTimeout(document.view, MARK_AS_VIEWED_AFTER);
           }
 
-          if (!this.revision) {
+          const isMove = props.location.pathname.match(/move$/);
+          const canRedirect = !this.revision && !isMove;
+          if (canRedirect) {
             const canonicalUrl = updateDocumentUrl(
               props.match.url,
               document.url
