@@ -19,6 +19,7 @@ type Props = {
   className: string,
   showPrint?: boolean,
   showToggleEmbeds?: boolean,
+  showPin?: boolean,
 };
 
 @observer
@@ -51,7 +52,20 @@ class DocumentMenu extends React.Component<Props> {
 
   handleDuplicate = async (ev: SyntheticEvent<*>) => {
     const duped = await this.props.document.duplicate();
+
+    // when duplicating, go straight to the duplicated document content
     this.redirectTo = duped.url;
+    this.props.ui.showToast('Document duplicated');
+  };
+
+  handleArchive = async (ev: SyntheticEvent<*>) => {
+    await this.props.document.archive();
+    this.props.ui.showToast('Document archived');
+  };
+
+  handleRestore = async (ev: SyntheticEvent<*>) => {
+    await this.props.document.restore();
+    this.props.ui.showToast('Document restored');
   };
 
   handlePin = (ev: SyntheticEvent<*>) => {
@@ -84,20 +98,36 @@ class DocumentMenu extends React.Component<Props> {
   render() {
     if (this.redirectTo) return <Redirect to={this.redirectTo} push />;
 
-    const { document, label, className, showPrint, auth } = this.props;
+    const { document, label, className, showPrint, showPin, auth } = this.props;
     const canShareDocuments = auth.team && auth.team.sharing;
+
+    if (document.isArchived) {
+      return (
+        <DropdownMenu label={label || <MoreIcon />} className={className}>
+          <DropdownMenuItem onClick={this.handleRestore}>
+            Restore
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={this.handleDelete}>
+            Delete…
+          </DropdownMenuItem>
+        </DropdownMenu>
+      );
+    }
 
     return (
       <DropdownMenu label={label || <MoreIcon />} className={className}>
-        {!document.isDraft && (
+        {!document.isDraft ? (
           <React.Fragment>
-            {document.pinned ? (
-              <DropdownMenuItem onClick={this.handleUnpin}>
-                Unpin
-              </DropdownMenuItem>
-            ) : (
-              <DropdownMenuItem onClick={this.handlePin}>Pin</DropdownMenuItem>
-            )}
+            {showPin &&
+              (document.pinned ? (
+                <DropdownMenuItem onClick={this.handleUnpin}>
+                  Unpin
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onClick={this.handlePin}>
+                  Pin to collection
+                </DropdownMenuItem>
+              ))}
             {document.starred ? (
               <DropdownMenuItem onClick={this.handleUnstar}>
                 Unstar
@@ -128,10 +158,19 @@ class DocumentMenu extends React.Component<Props> {
             <DropdownMenuItem onClick={this.handleDuplicate}>
               Duplicate
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={this.handleArchive}>
+              Archive
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={this.handleDelete}>
+              Delete…
+            </DropdownMenuItem>
             <DropdownMenuItem onClick={this.handleMove}>Move…</DropdownMenuItem>
           </React.Fragment>
+        ) : (
+          <DropdownMenuItem onClick={this.handleDelete}>
+            Delete…
+          </DropdownMenuItem>
         )}
-        <DropdownMenuItem onClick={this.handleDelete}>Delete…</DropdownMenuItem>
         <hr />
         <DropdownMenuItem onClick={this.handleExport}>
           Download

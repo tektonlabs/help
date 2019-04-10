@@ -3,7 +3,12 @@ import Router from 'koa-router';
 import Sequelize from 'sequelize';
 import auth from '../middlewares/authentication';
 import pagination from './middlewares/pagination';
-import { presentDocument, presentRevision } from '../presenters';
+import documentMover from '../commands/documentMover';
+import {
+  presentDocument,
+  presentCollection,
+  presentRevision,
+} from '../presenters';
 import { Document, Collection, Share, Star, View, Revision } from '../models';
 import { InvalidRequestError } from '../errors';
 import events from '../events';
@@ -81,6 +86,38 @@ router.post('documents.pinned', auth(), pagination(), async ctx => {
       teamId: user.teamId,
       collectionId,
       pinnedById: {
+        // $FlowFixMe
+        [Op.ne]: null,
+      },
+    },
+    order: [[sort, direction]],
+    offset: ctx.state.pagination.offset,
+    limit: ctx.state.pagination.limit,
+  });
+
+  const data = await Promise.all(
+    documents.map(document => presentDocument(ctx, document))
+  );
+
+  ctx.body = {
+    pagination: ctx.state.pagination,
+    data,
+  };
+});
+
+router.post('documents.archived', auth(), pagination(), async ctx => {
+  const { sort = 'updatedAt' } = ctx.body;
+  let direction = ctx.body.direction;
+  if (direction !== 'ASC') direction = 'DESC';
+
+  const user = ctx.state.user;
+  const collectionIds = await user.collectionIds();
+
+  const documents = await Document.findAll({
+    where: {
+      teamId: user.teamId,
+      collectionId: collectionIds,
+      archivedAt: {
         // $FlowFixMe
         [Op.ne]: null,
       },
@@ -235,7 +272,7 @@ router.post('documents.info', auth({ required: false }), async ctx => {
         },
       ],
     });
-    if (!share) {
+    if (!share || share.document.archivedAt) {
       throw new InvalidRequestError('Document could not be found for shareId');
     }
     document = share.document;
@@ -300,18 +337,29 @@ router.post('documents.revisions', auth(), pagination(), async ctx => {
 router.post('documents.restore', auth(), async ctx => {
   const { id, revisionId } = ctx.body;
   ctx.assertPresent(id, 'id is required');
-  ctx.assertPresent(revisionId, 'revisionId is required');
 
   const user = ctx.state.user;
   const document = await Document.findById(id);
-  authorize(user, 'update', document);
 
-  const revision = await Revision.findById(revisionId);
-  authorize(document, 'restore', revision);
+  if (document.archivedAt) {
+    authorize(user, 'unarchive', document);
 
-  document.text = revision.text;
-  document.title = revision.title;
-  await document.save();
+    // restore a previously archived document
+    await document.unarchive(user.id);
+
+    // restore a document to a specific revision
+  } else if (revisionId) {
+    authorize(user, 'update', document);
+
+    const revision = await Revision.findById(revisionId);
+    authorize(document, 'restore', revision);
+
+    document.text = revision.text;
+    document.title = revision.title;
+    await document.save();
+  } else {
+    ctx.assertPresent(revisionId, 'revisionId is required');
+  }
 
   ctx.body = {
     data: await presentDocument(ctx, document),
@@ -319,12 +367,13 @@ router.post('documents.restore', auth(), async ctx => {
 });
 
 router.post('documents.search', auth(), pagination(), async ctx => {
-  const { query } = ctx.body;
+  const { query, includeArchived } = ctx.body;
   const { offset, limit } = ctx.state.pagination;
   ctx.assertPresent(query, 'query is required');
 
   const user = ctx.state.user;
   const results = await Document.searchForUser(user, query, {
+    includeArchived: includeArchived === 'true',
     offset,
     limit,
   });
@@ -494,36 +543,68 @@ router.post('documents.update', auth(), async ctx => {
 });
 
 router.post('documents.move', auth(), async ctx => {
-  const { id, parentDocument, index } = ctx.body;
-  ctx.assertPresent(id, 'id is required');
-  if (parentDocument)
-    ctx.assertUuid(parentDocument, 'parentDocument must be a uuid');
-  if (index) ctx.assertPositiveInteger(index, 'index must be an integer (>=0)');
+  const { id, collectionId, parentDocumentId, index } = ctx.body;
+  ctx.assertUuid(id, 'id must be a uuid');
+  ctx.assertUuid(collectionId, 'collectionId must be a uuid');
+
+  if (parentDocumentId) {
+    ctx.assertUuid(parentDocumentId, 'parentDocumentId must be a uuid');
+  }
+  if (index) {
+    ctx.assertPositiveInteger(index, 'index must be a positive integer');
+  }
+  if (parentDocumentId === id) {
+    throw new InvalidRequestError(
+      'Infinite loop detected, cannot nest a document inside itself'
+    );
+  }
 
   const user = ctx.state.user;
   const document = await Document.findById(id);
-  authorize(user, 'update', document);
+  authorize(user, 'move', document);
 
-  const collection = document.collection;
-  if (collection.type !== 'atlas')
-    throw new InvalidRequestError('This document can’t be moved');
+  const collection = await Collection.findById(collectionId);
+  authorize(user, 'update', collection);
 
-  // Set parent document
-  if (parentDocument) {
-    const parent = await Document.findById(parentDocument);
+  if (collection.type !== 'atlas' && parentDocumentId) {
+    throw new InvalidRequestError(
+      'Document cannot be nested in this collection type'
+    );
+  }
+
+  if (parentDocumentId) {
+    const parent = await Document.findById(parentDocumentId);
     authorize(user, 'update', parent);
   }
 
-  if (parentDocument === id)
-    throw new InvalidRequestError('Infinite loop detected and prevented!');
+  const { documents, collections } = await documentMover({
+    document,
+    collectionId,
+    parentDocumentId,
+    index,
+  });
 
-  // If no parent document is provided, set it as null (move to root level)
-  document.parentDocumentId = parentDocument;
-  await document.save();
+  ctx.body = {
+    data: {
+      documents: await Promise.all(
+        documents.map(document => presentDocument(ctx, document))
+      ),
+      collections: await Promise.all(
+        collections.map(collection => presentCollection(ctx, collection))
+      ),
+    },
+  };
+});
 
-  await collection.moveDocument(document, index);
-  // Update collection
-  document.collection = collection;
+router.post('documents.archive', auth(), async ctx => {
+  const { id } = ctx.body;
+  ctx.assertPresent(id, 'id is required');
+
+  const user = ctx.state.user;
+  const document = await Document.findById(id);
+  authorize(user, 'archive', document);
+
+  await document.archive(user.id);
 
   ctx.body = {
     data: await presentDocument(ctx, document),
@@ -534,16 +615,11 @@ router.post('documents.delete', auth(), async ctx => {
   const { id } = ctx.body;
   ctx.assertPresent(id, 'id is required');
 
+  const user = ctx.state.user;
   const document = await Document.findById(id);
-  authorize(ctx.state.user, 'delete', document);
+  authorize(user, 'delete', document);
 
-  const collection = document.collection;
-  if (collection && collection.type === 'atlas') {
-    // Delete document and all of its children
-    await collection.removeDocument(document);
-  }
-
-  await document.destroy();
+  await document.delete();
 
   ctx.body = {
     success: true,

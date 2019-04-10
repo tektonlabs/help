@@ -250,11 +250,13 @@ export default function Pricing() {
 
           <Method method="documents.search" label="Search documents">
             <Description>
-              This methods allows you to search all of your documents with
-              keywords.
+              This methods allows you to search your teams documents with
+              keywords. Search results will be restricted to those accessible by
+              the current access token.
             </Description>
             <Arguments>
               <Argument id="query" description="Search query" required />
+              <Argument id="includeArchived" description="Boolean" />
             </Arguments>
           </Method>
 
@@ -352,8 +354,7 @@ export default function Pricing() {
 
           <Method method="documents.move" label="Move document in a collection">
             <Description>
-              Move a document into a new location inside the collection. This is
-              easily done by defining the parent document ID. If no parent
+              Move a document to a new location or collection. If no parent
               document is provided, the document will be moved to the collection
               root.
             </Description>
@@ -364,15 +365,34 @@ export default function Pricing() {
                 required
               />
               <Argument
-                id="parentDocument"
-                description="ID of the new parent document (if any)"
+                id="collectionId"
+                description="ID of the collection"
+                required
+              />
+              <Argument
+                id="parentDocumentId"
+                description="ID of the new parent document"
+              />
+            </Arguments>
+          </Method>
+
+          <Method method="documents.archive" label="Archive a document">
+            <Description>
+              Archive a document and all of its child documents, if any.
+            </Description>
+            <Arguments>
+              <Argument
+                id="id"
+                description="Document ID or URI identifier"
+                required
               />
             </Arguments>
           </Method>
 
           <Method method="documents.delete" label="Delete a document">
             <Description>
-              Delete a document and all of its child documents if any.
+              Permanantly delete a document and all of its child documents, if
+              any.
             </Description>
             <Arguments>
               <Argument
@@ -403,7 +423,8 @@ export default function Pricing() {
           >
             <Description>
               Restores a document to a previous revision by creating a new
-              revision with the contents of the given revisionId.
+              revision with the contents of the given revisionId or restores an
+              archived document if no revisionId is passed.
             </Description>
             <Arguments>
               <Argument
@@ -414,7 +435,6 @@ export default function Pricing() {
               <Argument
                 id="revisionId"
                 description="Revision ID to restore to"
-                required
               />
             </Arguments>
           </Method>

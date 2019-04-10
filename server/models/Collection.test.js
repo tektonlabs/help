@@ -145,51 +145,19 @@ describe('#updateDocument', () => {
   });
 });
 
-describe('#moveDocument', () => {
-  test('should move a document without children', async () => {
-    const { collection, document } = await seed();
-
-    expect(collection.documentStructure[1].id).toBe(document.id);
-    await collection.moveDocument(document, 0);
-    expect(collection.documentStructure[0].id).toBe(document.id);
-  });
-
-  test('should move a document with children', async () => {
-    const { collection, document } = await seed();
-
-    // Add a child for testing
-    const newDocument = await Document.create({
-      parentDocumentId: document.id,
-      collectionId: collection.id,
-      teamId: collection.teamId,
-      userId: collection.creatorId,
-      lastModifiedById: collection.creatorId,
-      createdById: collection.creatorId,
-      title: 'Child document',
-      text: 'content',
-    });
-    await collection.addDocumentToStructure(newDocument);
-
-    await collection.moveDocument(document, 0);
-    expect(collection.documentStructure[0].children[0].id).toBe(newDocument.id);
-  });
-});
-
 describe('#removeDocument', () => {
-  const destroyMock = jest.fn();
-
   test('should save if removing', async () => {
     const { collection, document } = await seed();
     jest.spyOn(collection, 'save');
 
-    await collection.removeDocument(document);
+    await collection.deleteDocument(document);
     expect(collection.save).toBeCalled();
   });
 
   test('should remove documents from root', async () => {
     const { collection, document } = await seed();
 
-    await collection.removeDocument(document);
+    await collection.deleteDocument(document);
     expect(collection.documentStructure.length).toBe(1);
 
     // Verify that the document was removed
@@ -219,7 +187,7 @@ describe('#removeDocument', () => {
     expect(collection.documentStructure[1].children.length).toBe(1);
 
     // Remove the document
-    await collection.removeDocument(document);
+    await collection.deleteDocument(document);
     expect(collection.documentStructure.length).toBe(1);
     const collectionDocuments = await Document.findAndCountAll({
       where: {
@@ -249,7 +217,7 @@ describe('#removeDocument', () => {
     expect(collection.documentStructure[1].children.length).toBe(1);
 
     // Remove the document
-    await collection.removeDocument(newDocument);
+    await collection.deleteDocument(newDocument);
 
     expect(collection.documentStructure.length).toBe(2);
     expect(collection.documentStructure[0].children.length).toBe(0);
@@ -261,21 +229,5 @@ describe('#removeDocument', () => {
       },
     });
     expect(collectionDocuments.count).toBe(2);
-  });
-
-  describe('options: deleteDocument = false', () => {
-    test('should remove documents from the structure but not destroy them from the DB', async () => {
-      const { collection, document } = await seed();
-      jest.spyOn(collection, 'save');
-
-      const removedNode = await collection.removeDocument(document, {
-        deleteDocument: false,
-      });
-      expect(collection.documentStructure.length).toBe(1);
-      expect(destroyMock).not.toBeCalled();
-      expect(collection.save).not.toBeCalled();
-      expect(removedNode.id).toBe(document.id);
-      expect(removedNode.children).toEqual([]);
-    });
   });
 });
