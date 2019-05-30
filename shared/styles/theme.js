@@ -45,6 +45,7 @@ export const base = {
     "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Oxygen, Ubuntu,Cantarell,'Open Sans','Helvetica Neue',sans-serif",
   fontWeight: 400,
   link: colors.primary,
+  backgroundTransition: 'background 100ms ease-in-out',
 };
 
 export const light = {
@@ -73,6 +74,10 @@ export const light = {
   toolbarBackground: colors.lightBlack,
   toolbarInput: colors.white10,
   toolbarItem: colors.white,
+
+  tableDivider: colors.smokeDark,
+  tableSelected: colors.primary,
+  tableSelectedBackground: '#E5F7FF',
 
   buttonBackground: colors.lightBlack,
   buttonText: colors.white,
@@ -109,17 +114,21 @@ export const dark = {
 
   menuBackground: lighten(0.015, colors.almostBlack),
   menuShadow:
-    '0 0 0 1px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.08)',
+    '0 0 0 1px rgba(0, 0, 0, 0.1), 0 8px 16px rgba(0, 0, 0, 0.3), 0 2px 4px rgba(0, 0, 0, 0.08), inset 0 0 1px rgba(255,255,255,.2)',
   divider: darken(0.2, colors.slate),
   inputBorder: colors.slateDark,
   inputBorderFocused: colors.slate,
 
-  listItemHoverBackground: colors.black10,
+  listItemHoverBackground: colors.black50,
   listItemHoverBorder: colors.black50,
 
   toolbarBackground: colors.white,
   toolbarInput: colors.black10,
   toolbarItem: colors.lightBlack,
+
+  tableDivider: colors.lightBlack,
+  tableSelected: colors.primary,
+  tableSelectedBackground: '#002333',
 
   buttonBackground: colors.white,
   buttonText: colors.lightBlack,
