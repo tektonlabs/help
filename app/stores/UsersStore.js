@@ -1,5 +1,5 @@
 // @flow
-import { filter } from 'lodash';
+import { filter, orderBy } from 'lodash';
 import { computed, action, runInAction } from 'mobx';
 import invariant from 'invariant';
 import { client } from 'utils/ApiClient';
@@ -22,6 +22,11 @@ export default class UsersStore extends BaseStore<User> {
     return filter(this.orderedData, user => user.isAdmin);
   }
 
+  @computed
+  get orderedData(): User[] {
+    return orderBy(Array.from(this.data.values()), 'name', 'asc');
+  }
+
   @action
   promote = (user: User) => {
     return this.actionOnUser('promote', user);
@@ -40,6 +45,13 @@ export default class UsersStore extends BaseStore<User> {
   @action
   activate = (user: User) => {
     return this.actionOnUser('activate', user);
+  };
+
+  @action
+  invite = async (invites: { email: string, name: string }[]) => {
+    const res = await client.post(`/users.invite`, { invites });
+    invariant(res && res.data, 'Data should be available');
+    return res.data;
   };
 
   actionOnUser = async (action: string, user: User) => {
