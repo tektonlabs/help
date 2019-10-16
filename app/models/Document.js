@@ -7,13 +7,13 @@ import unescape from 'shared/utils/unescape';
 import BaseModel from 'models/BaseModel';
 import Revision from 'models/Revision';
 import User from 'models/User';
+import DocumentsStore from 'stores/DocumentsStore';
 
 type SaveOptions = { publish?: boolean, done?: boolean, autosave?: boolean };
 
 export default class Document extends BaseModel {
   isSaving: boolean;
-  ui: *;
-  store: *;
+  store: DocumentsStore;
 
   collaborators: User[];
   collectionId: string;
@@ -37,14 +37,18 @@ export default class Document extends BaseModel {
   shareUrl: ?string;
   revision: number;
 
-  constructor(data?: Object = {}, store: *) {
+  constructor(data?: Object = {}, store: DocumentsStore) {
     super(data, store);
     this.updateTitle();
   }
 
   @action
   updateTitle() {
-    set(this, parseTitle(this.text));
+    const { title, emoji } = parseTitle(this.text);
+
+    if (title) {
+      set(this, { title, emoji });
+    }
   }
 
   @computed
@@ -54,7 +58,7 @@ export default class Document extends BaseModel {
 
   @computed
   get isStarred(): boolean {
-    return this.store.starredIds.get(this.id);
+    return !!this.store.starredIds.get(this.id);
   }
 
   @computed
@@ -90,7 +94,7 @@ export default class Document extends BaseModel {
     return this.store.archive(this);
   };
 
-  restore = (revision: ?Revision) => {
+  restore = (revision: Revision) => {
     return this.store.restore(this, revision);
   };
 
@@ -98,7 +102,9 @@ export default class Document extends BaseModel {
   pin = async () => {
     this.pinned = true;
     try {
-      await this.store.pin(this);
+      const res = await this.store.pin(this);
+      invariant(res && res.data, 'Data should be available');
+      this.updateFromJson(res.data);
     } catch (err) {
       this.pinned = false;
       throw err;
@@ -109,7 +115,9 @@ export default class Document extends BaseModel {
   unpin = async () => {
     this.pinned = false;
     try {
-      await this.store.unpin(this);
+      const res = await this.store.unpin(this);
+      invariant(res && res.data, 'Data should be available');
+      this.updateFromJson(res.data);
     } catch (err) {
       this.pinned = true;
       throw err;
@@ -143,7 +151,6 @@ export default class Document extends BaseModel {
     if (this.isSaving) return this;
 
     const isCreating = !this.id;
-    const wasDraft = !this.publishedAt;
     this.isSaving = true;
     this.updateTitle();
 
@@ -166,11 +173,6 @@ export default class Document extends BaseModel {
         ...options,
       });
     } finally {
-      if (wasDraft && options.publish) {
-        this.store.rootStore.collections.fetch(this.collectionId, {
-          force: true,
-        });
-      }
       this.isSaving = false;
     }
   };

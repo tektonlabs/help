@@ -9,7 +9,7 @@ import Flex from 'shared/components/Flex';
 
 type Props = {
   to?: string | Object,
-  onClick?: (SyntheticEvent<*>) => *,
+  onClick?: (SyntheticEvent<>) => void,
   children?: React.Node,
   icon?: React.Node,
   expanded?: boolean,
@@ -26,15 +26,11 @@ type Props = {
 
 @observer
 class SidebarLink extends React.Component<Props> {
-  @observable expanded: boolean;
+  @observable expanded: ?boolean = this.props.expanded;
 
   style = {
     paddingLeft: `${(this.props.depth || 0) * 16 + 16}px`,
   };
-
-  componentDidMount() {
-    if (this.props.expanded) this.handleExpand();
-  }
 
   componentWillReceiveProps(nextProps: Props) {
     if (nextProps.expanded !== undefined) {
@@ -43,9 +39,10 @@ class SidebarLink extends React.Component<Props> {
   }
 
   @action
-  handleClick = (ev: SyntheticEvent<*>) => {
+  handleClick = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
     ev.stopPropagation();
+
     this.expanded = !this.expanded;
   };
 
@@ -138,6 +135,12 @@ const StyledNavLink = styled(NavLink)`
 
   &:hover {
     color: ${props => props.theme.text};
+  }
+
+  &:focus {
+    color: ${props => props.theme.text};
+    background: ${props => props.theme.sidebarItemBackground};
+    outline: none;
   }
 
   &:hover {

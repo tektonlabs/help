@@ -1,8 +1,7 @@
 // @flow
 import * as React from 'react';
-import { withRouter } from 'react-router-dom';
+import { withRouter, type RouterHistory } from 'react-router-dom';
 import { inject } from 'mobx-react';
-import { MoreIcon } from 'outline-icons';
 
 import CopyToClipboard from 'components/CopyToClipboard';
 import { DropdownMenu, DropdownMenuItem } from 'components/DropdownMenu';
@@ -12,10 +11,9 @@ import Document from 'models/Document';
 import UiStore from 'stores/UiStore';
 
 type Props = {
-  label?: React.Node,
-  onOpen?: () => *,
-  onClose: () => *,
-  history: Object,
+  onOpen?: () => void,
+  onClose: () => void,
+  history: RouterHistory,
   document: Document,
   revision: Revision,
   className?: string,
@@ -23,7 +21,7 @@ type Props = {
 };
 
 class RevisionMenu extends React.Component<Props> {
-  handleRestore = async (ev: SyntheticEvent<*>) => {
+  handleRestore = async (ev: SyntheticEvent<>) => {
     ev.preventDefault();
     await this.props.document.restore(this.props.revision);
     this.props.ui.showToast('Document restored');
@@ -35,19 +33,14 @@ class RevisionMenu extends React.Component<Props> {
   };
 
   render() {
-    const { label, className, onOpen, onClose } = this.props;
+    const { className, onOpen, onClose } = this.props;
     const url = `${window.location.origin}${documentHistoryUrl(
       this.props.document,
       this.props.revision.id
     )}`;
 
     return (
-      <DropdownMenu
-        label={label || <MoreIcon />}
-        onOpen={onOpen}
-        onClose={onClose}
-        className={className}
-      >
+      <DropdownMenu onOpen={onOpen} onClose={onClose} className={className}>
         <DropdownMenuItem onClick={this.handleRestore}>
           Restore version
         </DropdownMenuItem>

@@ -5,12 +5,12 @@ import { Link } from 'react-router-dom';
 import styled from 'styled-components';
 import PublishingInfo from 'components/PublishingInfo';
 import Document from 'models/Document';
+import type { NavigationNode } from 'types';
 
 type Props = {
-  document: Document,
-  anchor: string,
+  document: Document | NavigationNode,
+  anchor?: string,
   showCollection?: boolean,
-  ref?: *,
 };
 
 const DocumentLink = styled(Link)`
@@ -44,7 +44,7 @@ const Title = styled.h3`
 `;
 
 @observer
-class Backlink extends React.Component<Props> {
+class ReferenceListItem extends React.Component<Props> {
   render() {
     const { document, showCollection, anchor, ...rest } = this.props;
 
@@ -52,16 +52,18 @@ class Backlink extends React.Component<Props> {
       <DocumentLink
         to={{
           pathname: document.url,
-          hash: `d-${anchor}`,
+          hash: anchor ? `d-${anchor}` : undefined,
           state: { title: document.title },
         }}
         {...rest}
       >
         <Title>{document.title}</Title>
-        <PublishingInfo document={document} showCollection={showCollection} />
+        {document.updatedBy && (
+          <PublishingInfo document={document} showCollection={showCollection} />
+        )}
       </DocumentLink>
     );
   }
 }
 
-export default Backlink;
+export default ReferenceListItem;

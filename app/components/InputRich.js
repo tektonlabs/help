@@ -3,7 +3,7 @@ import * as React from 'react';
 import { observable } from 'mobx';
 import { observer } from 'mobx-react';
 import styled, { withTheme } from 'styled-components';
-import Input, { LabelText, Outline } from 'components/Input';
+import { LabelText, Outline } from 'components/Input';
 
 type Props = {
   label: string,
@@ -14,7 +14,7 @@ type Props = {
 
 @observer
 class InputRich extends React.Component<Props> {
-  @observable editorComponent: *;
+  @observable editorComponent: React.ComponentType<any>;
   @observable focused: boolean = false;
 
   componentDidMount() {
@@ -41,26 +41,22 @@ class InputRich extends React.Component<Props> {
     return (
       <React.Fragment>
         <LabelText>{label}</LabelText>
-        {Editor ? (
-          <StyledOutline
-            maxHeight={maxHeight}
-            minHeight={minHeight}
-            focused={this.focused}
-          >
+
+        <StyledOutline
+          maxHeight={maxHeight}
+          minHeight={minHeight}
+          focused={this.focused}
+        >
+          {Editor ? (
             <Editor
               onBlur={this.handleBlur}
               onFocus={this.handleFocus}
               {...rest}
             />
-          </StyledOutline>
-        ) : (
-          <Input
-            maxHeight={maxHeight}
-            minHeight={minHeight}
-            placeholder="Loading…"
-            disabled
-          />
-        )}
+          ) : (
+            'Loading…'
+          )}
+        </StyledOutline>
       </React.Fragment>
     );
   }

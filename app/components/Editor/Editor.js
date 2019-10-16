@@ -10,6 +10,7 @@ import Placeholder from 'rich-markdown-editor/lib/components/Placeholder';
 import { uploadFile } from 'utils/uploadFile';
 import isInternalUrl from 'utils/isInternalUrl';
 import Tooltip from 'components/Tooltip';
+import UiStore from 'stores/UiStore';
 import Embed from './Embed';
 import embeds from '../../embeds';
 
@@ -17,8 +18,8 @@ type Props = {
   defaultValue?: string,
   readOnly?: boolean,
   disableEmbeds?: boolean,
-  forwardedRef: *,
-  ui: *,
+  forwardedRef: React.Ref<RichMarkdownEditor>,
+  ui: UiStore,
 };
 
 @observer
@@ -51,7 +52,11 @@ class Editor extends React.Component<Props> {
         }
       }
 
-      this.redirectTo = navigateTo;
+      // protect against redirecting back to the same place
+      const currentLocation = window.location.pathname + window.location.hash;
+      if (currentLocation !== navigateTo) {
+        this.redirectTo = navigateTo;
+      }
     } else {
       window.open(href, '_blank');
     }
@@ -271,8 +276,10 @@ const PrismStyles = createGlobalStyle`
   }
 `;
 
-const EditorTooltip = props => (
-  <Tooltip offset="0, 16" delay={150} {...props} />
+const EditorTooltip = ({ children, ...props }) => (
+  <Tooltip offset="0, 16" delay={150} {...props}>
+    <span>{children}</span>
+  </Tooltip>
 );
 
 export default withTheme(

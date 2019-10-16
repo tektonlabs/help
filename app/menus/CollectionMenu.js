@@ -2,11 +2,10 @@
 import * as React from 'react';
 import { observable } from 'mobx';
 import { inject, observer } from 'mobx-react';
-import { withRouter } from 'react-router-dom';
-import styled from 'styled-components';
-import { MoreIcon } from 'outline-icons';
+import { withRouter, type RouterHistory } from 'react-router-dom';
 import Modal from 'components/Modal';
-import CollectionPermissions from 'scenes/CollectionPermissions';
+import VisuallyHidden from 'components/VisuallyHidden';
+import CollectionMembers from 'scenes/CollectionMembers';
 
 import { newDocumentUrl } from 'utils/routeHelpers';
 import getDataTransferFiles from 'utils/getDataTransferFiles';
@@ -14,15 +13,16 @@ import importFile from 'utils/importFile';
 import Collection from 'models/Collection';
 import UiStore from 'stores/UiStore';
 import DocumentsStore from 'stores/DocumentsStore';
+import PoliciesStore from 'stores/PoliciesStore';
 import { DropdownMenu, DropdownMenuItem } from 'components/DropdownMenu';
 
 type Props = {
-  label?: React.Node,
   position?: 'left' | 'right' | 'center',
   ui: UiStore,
+  policies: PoliciesStore,
   documents: DocumentsStore,
   collection: Collection,
-  history: Object,
+  history: RouterHistory,
   onOpen?: () => void,
   onClose?: () => void,
 };
@@ -30,23 +30,23 @@ type Props = {
 @observer
 class CollectionMenu extends React.Component<Props> {
   file: ?HTMLInputElement;
-  @observable permissionsModalOpen: boolean = false;
-  @observable redirectTo: ?string;
+  @observable membersModalOpen: boolean = false;
 
-  onNewDocument = (ev: SyntheticEvent<*>) => {
+  onNewDocument = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
     const { collection } = this.props;
     this.props.history.push(newDocumentUrl(collection.id));
   };
 
-  onImportDocument = (ev: SyntheticEvent<*>) => {
+  onImportDocument = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
+    ev.stopPropagation();
 
     // simulate a click on the file upload input element
     if (this.file) this.file.click();
   };
 
-  onFilePicked = async (ev: SyntheticEvent<*>) => {
+  onFilePicked = async (ev: SyntheticEvent<>) => {
     const files = getDataTransferFiles(ev);
 
     try {
@@ -61,90 +61,97 @@ class CollectionMenu extends React.Component<Props> {
     }
   };
 
-  onEdit = (ev: SyntheticEvent<*>) => {
+  onEdit = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
     const { collection } = this.props;
     this.props.ui.setActiveModal('collection-edit', { collection });
   };
 
-  onDelete = (ev: SyntheticEvent<*>) => {
+  onDelete = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
     const { collection } = this.props;
     this.props.ui.setActiveModal('collection-delete', { collection });
   };
 
-  onExport = (ev: SyntheticEvent<*>) => {
+  onExport = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
     const { collection } = this.props;
     this.props.ui.setActiveModal('collection-export', { collection });
   };
 
-  onPermissions = (ev: SyntheticEvent<*>) => {
+  onPermissions = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
-    this.permissionsModalOpen = true;
+    this.membersModalOpen = true;
   };
 
-  handlePermissionsModalClose = () => {
-    this.permissionsModalOpen = false;
+  handleMembersModalClose = () => {
+    this.membersModalOpen = false;
   };
 
   render() {
-    const { collection, label, position, onOpen, onClose } = this.props;
+    const { policies, collection, position, onOpen, onClose } = this.props;
+    const can = policies.abilities(collection.id);
 
     return (
       <React.Fragment>
-        <HiddenInput
-          type="file"
-          ref={ref => (this.file = ref)}
-          onChange={this.onFilePicked}
-          accept="text/markdown, text/plain"
-        />
+        <VisuallyHidden>
+          <input
+            type="file"
+            ref={ref => (this.file = ref)}
+            onChange={this.onFilePicked}
+            accept="text/markdown, text/plain"
+          />
+        </VisuallyHidden>
+
         <Modal
-          title="Collection permissions"
-          onRequestClose={this.handlePermissionsModalClose}
-          isOpen={this.permissionsModalOpen}
+          title="Collection members"
+          onRequestClose={this.handleMembersModalClose}
+          isOpen={this.membersModalOpen}
         >
-          <CollectionPermissions
+          <CollectionMembers
             collection={collection}
-            onSubmit={this.handlePermissionsModalClose}
+            onSubmit={this.handleMembersModalClose}
+            onEdit={this.onEdit}
           />
         </Modal>
-        <DropdownMenu
-          label={label || <MoreIcon />}
-          onOpen={onOpen}
-          onClose={onClose}
-          position={position}
-        >
+        <DropdownMenu onOpen={onOpen} onClose={onClose} position={position}>
           {collection && (
             <React.Fragment>
-              <DropdownMenuItem onClick={this.onNewDocument}>
-                New document
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={this.onImportDocument}>
-                Import document
-              </DropdownMenuItem>
-              <hr />
-              <DropdownMenuItem onClick={this.onEdit}>Edit…</DropdownMenuItem>
-              <DropdownMenuItem onClick={this.onPermissions}>
-                Permissions…
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={this.onExport}>
-                Export…
-              </DropdownMenuItem>
+              {can.update && (
+                <DropdownMenuItem onClick={this.onNewDocument}>
+                  New document
+                </DropdownMenuItem>
+              )}
+              {can.update && (
+                <DropdownMenuItem onClick={this.onImportDocument}>
+                  Import document
+                </DropdownMenuItem>
+              )}
+              {can.update && <hr />}
+              {can.update && (
+                <DropdownMenuItem onClick={this.onEdit}>Edit…</DropdownMenuItem>
+              )}
+              {can.update && (
+                <DropdownMenuItem onClick={this.onPermissions}>
+                  Members…
+                </DropdownMenuItem>
+              )}
+              {can.export && (
+                <DropdownMenuItem onClick={this.onExport}>
+                  Export…
+                </DropdownMenuItem>
+              )}
             </React.Fragment>
           )}
-          <DropdownMenuItem onClick={this.onDelete}>Delete…</DropdownMenuItem>
+          {can.delete && (
+            <DropdownMenuItem onClick={this.onDelete}>Delete…</DropdownMenuItem>
+          )}
         </DropdownMenu>
       </React.Fragment>
     );
   }
 }
 
-const HiddenInput = styled.input`
-  position: absolute;
-  top: -100px;
-  left: -100px;
-  visibility: hidden;
-`;
-
-export default inject('ui', 'documents')(withRouter(CollectionMenu));
+export default inject('ui', 'documents', 'policies')(
+  withRouter(CollectionMenu)
+);

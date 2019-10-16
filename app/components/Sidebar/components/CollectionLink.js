@@ -18,7 +18,7 @@ type Props = {
   ui: UiStore,
   documents: DocumentsStore,
   activeDocument: ?Document,
-  prefetchDocument: (id: string) => *,
+  prefetchDocument: (id: string) => Promise<void>,
 };
 
 @observer
@@ -62,7 +62,7 @@ class CollectionLink extends React.Component<Props> {
           exact={false}
           menu={
             <CollectionMenu
-              position="left"
+              position="right"
               collection={collection}
               onOpen={() => (this.menuOpen = true)}
               onClose={() => (this.menuOpen = false)}

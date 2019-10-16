@@ -5,6 +5,8 @@ import { Link } from 'react-router-dom';
 import { StarredIcon } from 'outline-icons';
 import styled, { withTheme } from 'styled-components';
 import Flex from 'shared/components/Flex';
+import Badge from 'components/Badge';
+import Tooltip from 'components/Tooltip';
 import Highlight from 'components/Highlight';
 import PublishingInfo from 'components/PublishingInfo';
 import DocumentMenu from 'menus/DocumentMenu';
@@ -17,7 +19,7 @@ type Props = {
   showCollection?: boolean,
   showPublished?: boolean,
   showPin?: boolean,
-  ref?: *,
+  showDraft?: boolean,
 };
 
 const StyledStar = withTheme(styled(({ solid, theme, ...props }) => (
@@ -107,13 +109,13 @@ const SEARCH_RESULT_REGEX = /<b\b[^>]*>(.*?)<\/b>/gi;
 
 @observer
 class DocumentPreview extends React.Component<Props> {
-  star = (ev: SyntheticEvent<*>) => {
+  star = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
     ev.stopPropagation();
     this.props.document.star();
   };
 
-  unstar = (ev: SyntheticEvent<*>) => {
+  unstar = (ev: SyntheticEvent<>) => {
     ev.preventDefault();
     ev.stopPropagation();
     this.props.document.unstar();
@@ -131,6 +133,7 @@ class DocumentPreview extends React.Component<Props> {
       showCollection,
       showPublished,
       showPin,
+      showDraft = true,
       highlight,
       context,
       ...rest
@@ -159,6 +162,16 @@ class DocumentPreview extends React.Component<Props> {
                   <StyledStar onClick={this.star} />
                 )}
               </Actions>
+            )}
+          {document.isDraft &&
+            showDraft && (
+              <Tooltip
+                tooltip="Only visible to you"
+                delay={500}
+                placement="top"
+              >
+                <Badge>Draft</Badge>
+              </Tooltip>
             )}
           <StyledDocumentMenu document={document} showPin={showPin} />
         </Heading>

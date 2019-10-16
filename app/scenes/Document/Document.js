@@ -6,7 +6,7 @@ import breakpoint from 'styled-components-breakpoint';
 import { observable } from 'mobx';
 import { observer, inject } from 'mobx-react';
 import { Prompt, Route, withRouter } from 'react-router-dom';
-import type { Location } from 'react-router-dom';
+import type { Location, RouterHistory } from 'react-router-dom';
 import keydown from 'react-keydown';
 import Flex from 'shared/components/Flex';
 import {
@@ -22,7 +22,8 @@ import { emojiToUrl } from 'utils/emoji';
 import Header from './components/Header';
 import DocumentMove from './components/DocumentMove';
 import Branding from './components/Branding';
-import Backlinks from './components/Backlinks';
+import KeyboardShortcuts from './components/KeyboardShortcuts';
+import References from './components/References';
 import ErrorBoundary from 'components/ErrorBoundary';
 import LoadingPlaceholder from 'components/LoadingPlaceholder';
 import LoadingIndicator from 'components/LoadingIndicator';
@@ -30,13 +31,13 @@ import CenteredContent from 'components/CenteredContent';
 import PageTitle from 'components/PageTitle';
 import Notice from 'shared/components/Notice';
 import Time from 'shared/components/Time';
-import Search from 'scenes/Search';
 import Error404 from 'scenes/Error404';
 import ErrorOffline from 'scenes/ErrorOffline';
 
 import UiStore from 'stores/UiStore';
 import AuthStore from 'stores/AuthStore';
 import DocumentsStore from 'stores/DocumentsStore';
+import PoliciesStore from 'stores/PoliciesStore';
 import RevisionsStore from 'stores/RevisionsStore';
 import Document from 'models/Document';
 import Revision from 'models/Revision';
@@ -58,11 +59,11 @@ Are you sure you want to discard them?
 
 type Props = {
   match: Object,
-  history: Object,
+  history: RouterHistory,
   location: Location,
+  policies: PoliciesStore,
   documents: DocumentsStore,
   revisions: RevisionsStore,
-  newDocument?: boolean,
   auth: AuthStore,
   ui: UiStore,
 };
@@ -75,13 +76,12 @@ class DocumentScene extends React.Component<Props> {
   @observable editorComponent = EditorImport;
   @observable document: ?Document;
   @observable revision: ?Revision;
-  @observable newDocument: ?Document;
   @observable isUploading: boolean = false;
   @observable isSaving: boolean = false;
   @observable isPublishing: boolean = false;
   @observable isDirty: boolean = false;
   @observable isEmpty: boolean = true;
-  @observable notFound: boolean = false;
+  @observable error: ?Error;
   @observable moveModalOpen: boolean = false;
 
   constructor(props) {
@@ -89,6 +89,16 @@ class DocumentScene extends React.Component<Props> {
     this.document = props.documents.getByUrl(props.match.params.documentSlug);
     this.loadDocument(props);
     this.loadEditor();
+  }
+
+  componentDidUpdate() {
+    if (this.document) {
+      const policy = this.props.policies.get(this.document.id);
+
+      if (!policy) {
+        this.loadDocument(this.props);
+      }
+    }
   }
 
   componentWillUnmount() {
@@ -102,18 +112,26 @@ class DocumentScene extends React.Component<Props> {
   @keydown('m')
   goToMove(ev) {
     ev.preventDefault();
+    const document = this.document;
+    if (!document) return;
 
-    if (this.document && !this.document.isArchived && !this.document.isDraft) {
-      this.props.history.push(documentMoveUrl(this.document));
+    const can = this.props.policies.abilities(document.id);
+
+    if (can.update) {
+      this.props.history.push(documentMoveUrl(document));
     }
   }
 
   @keydown('e')
   goToEdit(ev) {
     ev.preventDefault();
+    const document = this.document;
+    if (!document) return;
 
-    if (this.document && !this.document.isArchived) {
-      this.props.history.push(documentEditUrl(this.document));
+    const can = this.props.policies.abilities(document.id);
+
+    if (can.update) {
+      this.props.history.push(documentEditUrl(document));
     }
   }
 
@@ -138,21 +156,9 @@ class DocumentScene extends React.Component<Props> {
   }
 
   loadDocument = async props => {
-    if (props.newDocument) {
-      this.document = new Document(
-        {
-          collectionId: props.match.params.id,
-          parentDocumentId: new URLSearchParams(props.location.search).get(
-            'parentDocumentId'
-          ),
-          title: '',
-          text: '',
-        },
-        props.documents
-      );
-    } else {
-      const { shareId, revisionId } = props.match.params;
+    const { shareId, revisionId } = props.match.params;
 
+    try {
       this.document = await props.documents.fetch(
         props.match.params.documentSlug,
         { shareId }
@@ -166,39 +172,36 @@ class DocumentScene extends React.Component<Props> {
       } else {
         this.revision = undefined;
       }
+    } catch (err) {
+      this.error = err;
+      return;
+    }
 
-      this.isDirty = false;
-      this.isEmpty = false;
+    this.isDirty = false;
+    this.isEmpty = false;
 
-      const document = this.document;
+    const document = this.document;
 
-      if (document) {
-        this.props.ui.setActiveDocument(document);
+    if (document) {
+      this.props.ui.setActiveDocument(document);
 
-        if (document.isArchived && this.isEditing) {
-          return this.goToDocumentCanonical();
+      if (document.isArchived && this.isEditing) {
+        return this.goToDocumentCanonical();
+      }
+
+      if (this.props.auth.user && !shareId) {
+        if (!this.isEditing && document.publishedAt) {
+          this.viewTimeout = setTimeout(document.view, MARK_AS_VIEWED_AFTER);
         }
 
-        if (this.props.auth.user && !shareId) {
-          if (!this.isEditing && document.publishedAt) {
-            this.viewTimeout = setTimeout(document.view, MARK_AS_VIEWED_AFTER);
-          }
-
-          const isMove = props.location.pathname.match(/move$/);
-          const canRedirect = !this.revision && !isMove;
-          if (canRedirect) {
-            const canonicalUrl = updateDocumentUrl(
-              props.match.url,
-              document.url
-            );
-            if (props.location.pathname !== canonicalUrl) {
-              props.history.replace(canonicalUrl);
-            }
+        const isMove = props.location.pathname.match(/move$/);
+        const canRedirect = !this.revision && !isMove;
+        if (canRedirect) {
+          const canonicalUrl = updateDocumentUrl(props.match.url, document.url);
+          if (props.location.pathname !== canonicalUrl) {
+            props.history.replace(canonicalUrl);
           }
         }
-      } else {
-        // Render 404 with search
-        this.notFound = true;
       }
     }
   };
@@ -314,16 +317,8 @@ class DocumentScene extends React.Component<Props> {
     const revision = this.revision;
     const isShare = match.params.shareId;
 
-    if (this.notFound) {
-      return navigator.onLine ? (
-        isShare ? (
-          <Error404 />
-        ) : (
-          <Search notFound />
-        )
-      ) : (
-        <ErrorOffline />
-      );
+    if (this.error) {
+      return navigator.onLine ? <Error404 /> : <ErrorOffline />;
     }
 
     if (!document || !Editor) {
@@ -333,13 +328,16 @@ class DocumentScene extends React.Component<Props> {
             title={location.state ? location.state.title : 'Untitled'}
           />
           <CenteredContent>
-            <LoadingState />
+            <LoadingPlaceholder />
           </CenteredContent>
         </Container>
       );
     }
 
     const embedsDisabled = team && !team.documentEmbeds;
+
+    // this line is only here to make MobX understand that policies are a dependency of this component
+    this.props.policies.abilities(document.id);
 
     return (
       <ErrorBoundary>
@@ -380,6 +378,7 @@ class DocumentScene extends React.Component<Props> {
             {!isShare && (
               <Header
                 document={document}
+                isRevision={!!revision}
                 isDraft={document.isDraft}
                 isEditing={this.isEditing}
                 isSaving={this.isSaving}
@@ -417,16 +416,11 @@ class DocumentScene extends React.Component<Props> {
                 schema={schema}
               />
               {!this.isEditing &&
-                !isShare && (
-                  <Backlinks
-                    documents={this.props.documents}
-                    document={document}
-                  />
-                )}
+                !isShare && <References document={document} />}
             </MaxWidth>
           </Container>
         </Container>
-        {isShare && <Branding />}
+        {isShare ? <Branding /> : <KeyboardShortcuts />}
       </ErrorBoundary>
     );
   }
@@ -441,7 +435,7 @@ const MaxWidth = styled(Flex)`
 
   ${breakpoint('tablet')`	
     padding: 0 24px;
-    margin: 12px auto;
+    margin: 4px auto 12px;
     max-width: 46em;
     box-sizing: content-box;
   `};
@@ -452,10 +446,6 @@ const Container = styled(Flex)`
   margin-top: ${props => (props.isShare ? '50px' : '0')};
 `;
 
-const LoadingState = styled(LoadingPlaceholder)`
-  margin: 40px 0;
-`;
-
 export default withRouter(
-  inject('ui', 'auth', 'documents', 'revisions')(DocumentScene)
+  inject('ui', 'auth', 'documents', 'policies', 'revisions')(DocumentScene)
 );

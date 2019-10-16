@@ -2,7 +2,7 @@
 import * as React from 'react';
 import { observable } from 'mobx';
 import { observer, inject } from 'mobx-react';
-import { withRouter } from 'react-router-dom';
+import { withRouter, type RouterHistory } from 'react-router-dom';
 import { createGlobalStyle } from 'styled-components';
 import invariant from 'invariant';
 import importFile from 'utils/importFile';
@@ -11,6 +11,7 @@ import DocumentsStore from 'stores/DocumentsStore';
 import LoadingIndicator from 'components/LoadingIndicator';
 
 const EMPTY_OBJECT = {};
+let importingLock = false;
 
 type Props = {
   children: React.Node,
@@ -22,7 +23,7 @@ type Props = {
   disabled: boolean,
   location: Object,
   match: Object,
-  history: Object,
+  history: RouterHistory,
   staticContext: Object,
 };
 
@@ -43,7 +44,10 @@ class DropToImport extends React.Component<Props> {
   @observable isImporting: boolean = false;
 
   onDropAccepted = async (files = []) => {
+    if (importingLock) return;
+
     this.isImporting = true;
+    importingLock = true;
 
     try {
       let collectionId = this.props.collectionId;
@@ -70,6 +74,7 @@ class DropToImport extends React.Component<Props> {
       }
     } finally {
       this.isImporting = false;
+      importingLock = false;
     }
   };
 

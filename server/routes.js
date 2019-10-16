@@ -11,6 +11,7 @@ import apexRedirect from './middlewares/apexRedirect';
 import renderpage from './utils/renderpage';
 import { isCustomSubdomain, parseDomain } from '../shared/utils/domains';
 import { robotsResponse } from './utils/robots';
+import { opensearchResponse } from './utils/opensearch';
 import { NotFoundError } from './errors';
 import { Team } from './models';
 
@@ -69,7 +70,9 @@ router.get('/privacy', ctx => renderpage(ctx, <Privacy />));
 router.get('/integrations/:slug', async ctx => {
   const slug = ctx.params.slug;
   const integration = find(integrations, i => i.slug === slug);
-  if (!integration) throw new Error('Not found');
+  if (!integration) {
+    return ctx.redirect(`${process.env.URL}/integrations`);
+  }
 
   const content = await fs.readFile(
     path.resolve(__dirname, `pages/integrations/${slug}.md`)
@@ -146,7 +149,14 @@ router.get('/', async ctx => {
   );
 });
 
-router.get('/robots.txt', ctx => (ctx.body = robotsResponse(ctx)));
+router.get('/robots.txt', ctx => {
+  ctx.body = robotsResponse(ctx);
+});
+
+router.get('/opensearch.xml', ctx => {
+  ctx.type = 'text/xml';
+  ctx.body = opensearchResponse();
+});
 
 // catch all for react app
 router.get('*', async (ctx, next) => {

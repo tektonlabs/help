@@ -18,7 +18,7 @@ type Props = {
   documents: DocumentsStore,
   collection?: Collection,
   activeDocument: ?Document,
-  activeDocumentRef?: (?HTMLElement) => *,
+  activeDocumentRef?: (?HTMLElement) => void,
   prefetchDocument: (documentId: string) => Promise<void>,
   depth: number,
 };
@@ -27,7 +27,7 @@ type Props = {
 class DocumentLink extends React.Component<Props> {
   @observable menuOpen = false;
 
-  handleMouseEnter = (ev: SyntheticEvent<*>) => {
+  handleMouseEnter = (ev: SyntheticEvent<>) => {
     const { node, prefetchDocument } = this.props;
 
     ev.stopPropagation();
@@ -72,7 +72,7 @@ class DocumentLink extends React.Component<Props> {
               pathname: node.url,
               state: { title: node.title },
             }}
-            expanded={showChildren}
+            expanded={showChildren ? true : undefined}
             label={node.title}
             depth={depth}
             exact={false}
@@ -81,7 +81,7 @@ class DocumentLink extends React.Component<Props> {
               document ? (
                 <Fade>
                   <DocumentMenu
-                    position="left"
+                    position="right"
                     document={document}
                     onOpen={() => (this.menuOpen = true)}
                     onClose={() => (this.menuOpen = false)}

@@ -1,4 +1,4 @@
-FROM node:8.11
+FROM node:12-alpine
 
 ENV PATH /opt/outline/node_modules/.bin:/opt/node_modules/.bin:$PATH
 ENV NODE_PATH /opt/outline/node_modules:/opt/node_modules
@@ -12,3 +12,5 @@ RUN yarn install --pure-lockfile
 RUN cp -r /opt/outline/node_modules /opt/node_modules
 
 CMD yarn build && yarn start
+
+EXPOSE 3000
