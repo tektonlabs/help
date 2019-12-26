@@ -155,6 +155,14 @@ class DocumentScene extends React.Component<Props> {
     }
   }
 
+  @keydown('meta+shift+p')
+  onPublish(ev) {
+    ev.preventDefault();
+    if (!this.document) return;
+    if (this.document.publishedAt) return;
+    this.onSave({ publish: true, done: true });
+  }
+
   loadDocument = async props => {
     const { shareId, revisionId } = props.match.params;
 
@@ -392,10 +400,25 @@ class DocumentScene extends React.Component<Props> {
               />
             )}
             <MaxWidth archived={document.isArchived} column auto>
-              {document.archivedAt && (
+              {document.archivedAt &&
+                !document.deletedAt && (
+                  <Notice muted>
+                    Archived by {document.updatedBy.name}{' '}
+                    <Time dateTime={document.archivedAt} /> ago
+                  </Notice>
+                )}
+              {document.deletedAt && (
                 <Notice muted>
-                  Archived by {document.updatedBy.name}{' '}
-                  <Time dateTime={document.archivedAt} /> ago
+                  Deleted by {document.updatedBy.name}{' '}
+                  <Time dateTime={document.deletedAt} /> ago
+                  {document.permanentlyDeletedAt && (
+                    <React.Fragment>
+                      <br />
+                      This document will be permanently deleted in{' '}
+                      <Time dateTime={document.permanentlyDeletedAt} /> unless
+                      restored.
+                    </React.Fragment>
+                  )}
                 </Notice>
               )}
               <Editor
@@ -409,6 +432,7 @@ class DocumentScene extends React.Component<Props> {
                 onSearchLink={this.onSearchLink}
                 onChange={this.onChange}
                 onSave={this.onSave}
+                onPublish={this.onPublish}
                 onCancel={this.onDiscard}
                 readOnly={!this.isEditing || document.isArchived}
                 toc={!revision}
@@ -416,7 +440,11 @@ class DocumentScene extends React.Component<Props> {
                 schema={schema}
               />
               {!this.isEditing &&
-                !isShare && <References document={document} />}
+                !isShare && (
+                  <ReferencesWrapper isOnlyTitle={document.isOnlyTitle}>
+                    <References document={document} />
+                  </ReferencesWrapper>
+                )}
             </MaxWidth>
           </Container>
         </Container>
@@ -425,6 +453,10 @@ class DocumentScene extends React.Component<Props> {
     );
   }
 }
+
+const ReferencesWrapper = styled('div')`
+  margin-top: ${props => (props.isOnlyTitle ? -45 : 16)}px;
+`;
 
 const MaxWidth = styled(Flex)`
   ${props =>

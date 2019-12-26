@@ -117,7 +117,15 @@ export default class DocumentsStore extends BaseStore<Document> {
   get archived(): Document[] {
     return filter(
       orderBy(this.orderedData, 'archivedAt', 'desc'),
-      d => d.archivedAt
+      d => d.archivedAt && !d.deletedAt
+    );
+  }
+
+  @computed
+  get deleted(): Document[] {
+    return filter(
+      orderBy(this.orderedData, 'deletedAt', 'desc'),
+      d => d.deletedAt
     );
   }
 
@@ -164,6 +172,18 @@ export default class DocumentsStore extends BaseStore<Document> {
   }
 
   @action
+  fetchChildDocuments = async (documentId: string): Promise<?(Document[])> => {
+    const res = await client.post(`/documents.list`, {
+      parentDocumentId: documentId,
+    });
+    invariant(res && res.data, 'Document list not available');
+    const { data } = res;
+    runInAction('DocumentsStore#fetchChildDocuments', () => {
+      data.forEach(this.add);
+    });
+  };
+
+  @action
   fetchNamedPage = async (
     request: string = 'list',
     options: ?PaginationParams
@@ -187,6 +207,11 @@ export default class DocumentsStore extends BaseStore<Document> {
   @action
   fetchArchived = async (options: ?PaginationParams): Promise<*> => {
     return this.fetchNamedPage('archived', options);
+  };
+
+  @action
+  fetchDeleted = async (options: ?PaginationParams): Promise<*> => {
+    return this.fetchNamedPage('deleted', options);
   };
 
   @action
@@ -268,15 +293,15 @@ export default class DocumentsStore extends BaseStore<Document> {
       query,
     });
     invariant(res && res.data, 'Search response should be available');
-    const { data } = res;
 
-    // add the document to the store
-    data.forEach(result => this.add(result.document));
+    // add the documents and associated policies to the store
+    res.data.forEach(result => this.add(result.document));
+    this.addPolicies(res.policies);
 
     // store a reference to the document model in the search cache instead
     // of the original result from the API.
     const results: SearchResult[] = compact(
-      data.map(result => {
+      res.data.map(result => {
         const document = this.data.get(result.document.id);
         if (!document) return null;
 
@@ -294,7 +319,7 @@ export default class DocumentsStore extends BaseStore<Document> {
     existing.splice(options.offset || 0, options.limit || 0, ...results);
 
     this.searchCache.set(query, existing);
-    return data;
+    return res.data;
   };
 
   @action

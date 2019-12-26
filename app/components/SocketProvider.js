@@ -59,7 +59,10 @@ class SocketProvider extends React.Component<Props> {
             let document = documents.get(documentId) || {};
 
             if (event.event === 'documents.delete') {
-              documents.remove(documentId);
+              const document = documents.get(documentId);
+              if (document) {
+                document.deletedAt = documentDescriptor.updatedAt;
+              }
               continue;
             }
 
@@ -192,7 +195,9 @@ class SocketProvider extends React.Component<Props> {
   }
 
   componentWillUnmount() {
-    this.socket.disconnect();
+    if (this.socket) {
+      this.socket.disconnect();
+    }
   }
 
   render() {
