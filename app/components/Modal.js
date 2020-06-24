@@ -1,16 +1,16 @@
 // @flow
-import * as React from 'react';
-import { observer } from 'mobx-react';
-import styled, { createGlobalStyle } from 'styled-components';
-import breakpoint from 'styled-components-breakpoint';
-import ReactModal from 'react-modal';
-import { transparentize } from 'polished';
-import { CloseIcon, BackIcon } from 'outline-icons';
-import NudeButton from 'components/NudeButton';
-import { fadeAndScaleIn } from 'shared/styles/animations';
-import Flex from 'shared/components/Flex';
+import * as React from "react";
+import { observer } from "mobx-react";
+import styled, { createGlobalStyle } from "styled-components";
+import breakpoint from "styled-components-breakpoint";
+import ReactModal from "react-modal";
+import { transparentize } from "polished";
+import { CloseIcon, BackIcon } from "outline-icons";
+import NudeButton from "components/NudeButton";
+import { fadeAndScaleIn } from "shared/styles/animations";
+import Flex from "shared/components/Flex";
 
-ReactModal.setAppElement('#root');
+ReactModal.setAppElement("#root");
 
 type Props = {
   children?: React.Node,
@@ -26,7 +26,7 @@ const GlobalStyles = createGlobalStyle`
     z-index: 100;
   }
 
-  ${breakpoint('tablet')`
+  ${breakpoint("tablet")`
     .ReactModalPortal + .ReactModalPortal {
       .ReactModal__Overlay {
         margin-left: 12px;
@@ -41,6 +41,12 @@ const GlobalStyles = createGlobalStyle`
         margin-left: 24px;
       }
     }
+
+    .ReactModalPortal + .ReactModalPortal + .ReactModalPortal + .ReactModalPortal {
+      .ReactModal__Overlay {
+        margin-left: 36px;
+      }
+    }
   `};
 
   .ReactModal__Body--open {
@@ -51,7 +57,7 @@ const GlobalStyles = createGlobalStyle`
 const Modal = ({
   children,
   isOpen,
-  title = 'Untitled',
+  title = "Untitled",
   onRequestClose,
   ...rest
 }: Props) => {
@@ -108,7 +114,7 @@ const StyledModal = styled(ReactModal)`
   padding: 8vh 2rem 2rem;
   outline: none;
 
-  ${breakpoint('tablet')`
+  ${breakpoint("tablet")`
     padding-top: 13vh;
   `};
 `;
@@ -135,13 +141,13 @@ const Close = styled(NudeButton)`
     opacity: 1;
   }
 
-  ${breakpoint('tablet')`
+  ${breakpoint("tablet")`
     display: none;
   `};
 `;
 
 const Back = styled(NudeButton)`
-  position: absolute;
+  position: fixed;
   display: none;
   align-items: center;
   top: 2rem;
@@ -155,7 +161,7 @@ const Back = styled(NudeButton)`
     opacity: 1;
   }
 
-  ${breakpoint('tablet')`
+  ${breakpoint("tablet")`
     display: flex;
   `};
 `;

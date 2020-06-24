@@ -1,8 +1,8 @@
 // @flow
-import { takeRight } from 'lodash';
-import { User, Document, Attachment } from '../models';
-import { getSignedImageUrl } from '../utils/s3';
-import presentUser from './user';
+import { takeRight } from "lodash";
+import { User, Document, Attachment } from "../models";
+import { getSignedImageUrl } from "../utils/s3";
+import presentUser from "./user";
 
 type Options = {
   isPublic?: boolean,
@@ -18,8 +18,10 @@ async function replaceImageAttachments(text) {
 
   for (const id of attachmentIds) {
     const attachment = await Attachment.findByPk(id);
-    const accessUrl = await getSignedImageUrl(attachment.key);
-    text = text.replace(attachment.redirectUrl, accessUrl);
+    if (attachment) {
+      const accessUrl = await getSignedImageUrl(attachment.key);
+      text = text.replace(attachment.redirectUrl, accessUrl);
+    }
   }
 
   return text;
@@ -31,7 +33,9 @@ export default async function present(document: Document, options: ?Options) {
     ...options,
   };
 
-  const text = options.isPublic
+  await document.migrateVersion();
+
+  let text = options.isPublic
     ? await replaceImageAttachments(document.text)
     : document.text;
 
